@@ -88,6 +88,12 @@
         <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/sharing_paths" />
       </provider>
     </config-file>
+          
+     <config-file target="AndroidManifest.xml" parent="/*">
+      <queries>
+        <package android:name="com.whatsapp" />
+      </queries>
+    </config-file>
 
     <source-file src="src/android/nl/xservices/plugins/SocialSharing.java" target-dir="src/nl/xservices/plugins"/>
     <source-file src="src/android/nl/xservices/plugins/ShareChooserPendingIntent.java" target-dir="src/nl/xservices/plugins"/>
