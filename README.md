@@ -563,3 +563,17 @@ Add this reference into your typings file definition:
 ```
 /// <reference path="../node_modules/cordova-plugin-x-socialsharing/types/index.d.ts" />
 ```
+
+IMPORTANT : Android 11 introduced changes related to package visibility. These changes affect applications, only if they target Android 11 and above. For more information on these changes, please view the official documentation about package visibility on Android.
+
+https://developer.android.com/training/package-visibility
+
+https://developer.android.com/about/versions/11/privacy/package-visibility
+
+--> Add this configuration in your config.xml
+
+```xml
+ <edit-config file="AndroidManifest.xml" mode="merge" target="/manifest/uses-permission" xmlns:android="http://schemas.android.com/apk/res/android">
+            <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+</edit-config>
+```
