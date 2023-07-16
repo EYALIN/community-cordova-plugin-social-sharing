@@ -1,19 +1,23 @@
 # PhoneGap / Cordova Social Sharing plugin
 
-[![NPM version][npm-image]][npm-url]
-[![Downloads][downloads-image]][npm-url]
-[![TotalDownloads][total-downloads-image]][npm-url]
-[![Twitter Follow][twitter-image]][twitter-url]
+[![NPM version](https://img.shields.io/npm/v/community-cordova-plugin-social-sharing)](https://www.npmjs.com/package/community-cordova-plugin-social-sharing)
+[![Downloads](https://img.shields.io/npm/dm/community-cordova-plugin-social-sharing)](https://www.npmjs.com/package/community-cordova-plugin-social-sharing)
 
-[npm-image]:http://img.shields.io/npm/v/cordova-plugin-x-socialsharing.svg
-[npm-url]:https://npmjs.org/package/cordova-plugin-x-socialsharing
-[downloads-image]:http://img.shields.io/npm/dm/cordova-plugin-x-socialsharing.svg
-[total-downloads-image]:http://img.shields.io/npm/dt/cordova-plugin-x-socialsharing.svg?label=total%20downloads
-[twitter-image]:https://img.shields.io/twitter/follow/eddyverbruggen.svg?style=social&label=Follow%20me
-[twitter-url]:https://twitter.com/eddyverbruggen
 
-[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donate_SM.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=eddyverbruggen%40gmail%2ecom&lc=US&item_name=cordova%2dplugin%2dsocialsharing&currency_code=USD&bn=PP%2dDonationsBF%3abtn_donate_SM%2egif%3aNonHosted)
-Every now and then kind folks ask me how they can give me all their money. So if you want to contribute to my pension fund, then please go ahead :)
+
+#### This is a fork of the original plugin cordova-plugin-x-socialsharing
+
+I dedicate a considerable amount of my free time to developing and maintaining many cordova plugins for the community ([See the list with all my maintained plugins][community_plugins]).
+To help ensure this plugin is kept updated,
+new features are added and bugfixes are implemented quickly,
+please donate a couple of dollars (or a little more if you can stretch) as this will help me to afford to dedicate time to its maintenance.
+Please consider donating if you're using this plugin in an app that makes you money,
+or if you're asking for new features or priority bug fixes. Thank you!
+
+[![](https://img.shields.io/static/v1?label=Sponsor%20Me&style=for-the-badge&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86)](https://github.com/sponsors/eyalin)
+
+
+
 
 > Version 6.0.0 is compatible with Android X. See [this issue](https://github.com/EddyVerbruggen/SocialSharing-PhoneGap-Plugin/pull/1039) for details. 5.6.8 is the last version before 6.0.0, so be sure to pick that if you run into Android X-related issues.
 
@@ -577,3 +581,5 @@ https://developer.android.com/about/versions/11/privacy/package-visibility
             <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
 </edit-config>
 ```
+
+[community_plugins]: https://github.com/EYALIN?tab=repositories&q=community&type=&language=&sort=
