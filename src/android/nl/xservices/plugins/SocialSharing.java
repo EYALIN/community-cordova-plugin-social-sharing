@@ -39,6 +39,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import android.os.Bundle;
 
 public class SocialSharing extends CordovaPlugin {
 
@@ -131,85 +132,183 @@ public class SocialSharing extends CordovaPlugin {
     return cordova.getActivity().getPackageManager().queryIntentActivities(intent, 0).size() > 0;
   }
 
-  private boolean invokeEmailIntent(final CallbackContext callbackContext, final String message, final String subject, final JSONArray to, final JSONArray cc, final JSONArray bcc, final JSONArray files) throws JSONException {
+ private boolean invokeEmailIntent(final CallbackContext callbackContext,
+                                   final String message,
+                                   final String subject,
+                                   final JSONArray to,
+                                   final JSONArray cc,
+                                   final JSONArray bcc,
+                                   final JSONArray files) throws JSONException {
+     final SocialSharing plugin = this;
+     Log.d("SocialSharing", "invokeEmailIntent called");
 
-    final SocialSharing plugin = this;
-    cordova.getThreadPool().execute(new SocialSharingRunnable(callbackContext) {
-      public void run() {
-        Intent draft = new Intent(Intent.ACTION_SENDTO);
-        if (notEmpty(message)) {
-          Pattern htmlPattern = Pattern.compile(".*\\<[^>]+>.*", Pattern.DOTALL);
-          if (htmlPattern.matcher(message).matches()) {
-            draft.putExtra(android.content.Intent.EXTRA_TEXT, Html.fromHtml(message));
-            draft.setType("text/html");
-          } else {
-            draft.putExtra(android.content.Intent.EXTRA_TEXT, message);
-            draft.setType("text/plain");
-          }
-        }
-        if (notEmpty(subject)) {
-          draft.putExtra(android.content.Intent.EXTRA_SUBJECT, subject);
-        }
-        try {
-          if (to != null && to.length() > 0) {
-            draft.putExtra(android.content.Intent.EXTRA_EMAIL, toStringArray(to));
-          }
-          if (cc != null && cc.length() > 0) {
-            draft.putExtra(android.content.Intent.EXTRA_CC, toStringArray(cc));
-          }
-          if (bcc != null && bcc.length() > 0) {
-            draft.putExtra(android.content.Intent.EXTRA_BCC, toStringArray(bcc));
-          }
-          if (files.length() > 0) {
-            final String dir = getDownloadDir();
-            if (dir != null) {
-              ArrayList<Uri> fileUris = new ArrayList<Uri>();
-              for (int i = 0; i < files.length(); i++) {
-                Uri fileUri = getFileUriAndSetType(draft, dir, files.getString(i), subject, i);
-                fileUri = FileProvider.getUriForFile(webView.getContext(), cordova.getActivity().getPackageName()+".sharing.provider", new File(fileUri.getPath()));
-                if (fileUri != null) {
-                  fileUris.add(fileUri);
-                }
-              }
-              if (!fileUris.isEmpty()) {
-                draft.putExtra(Intent.EXTRA_STREAM, fileUris);
-              }
-            }
-          }
-        } catch (Exception e) {
-          callbackContext.error(e.getMessage());
-          return;
-        }
+     cordova.getThreadPool().execute(new SocialSharingRunnable(callbackContext) {
+         public void run() {
+             Log.d("SocialSharing", "Runnable started");
 
-        // this was added to start the intent in a new window as suggested in #300 to prevent crashes upon return
-        draft.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+             boolean hasAttachments = files != null && files.length() > 0;
+             boolean hasMultipleFiles = files != null && files.length() > 1;
+             Log.d("SocialSharing", "Attachment count = " + (files != null ? files.length() : 0) +
+                     ", multiple? " + hasMultipleFiles);
 
-        draft.setData(Uri.parse("mailto:"));
+             // start with a generic intent
+             Intent draft = new Intent();
+             Log.d("SocialSharing", "Created base Intent");
 
-        List<ResolveInfo> emailAppList = cordova.getActivity().getPackageManager().queryIntentActivities(draft, 0);
+             // handle message
+             if (notEmpty(message)) {
+                 Log.d("SocialSharing", "Message is not empty");
+                 Pattern htmlPattern = Pattern.compile(".*\\<[^>]+>.*", Pattern.DOTALL);
 
-        List<LabeledIntent> labeledIntentList = new ArrayList();
-        for (ResolveInfo info : emailAppList) {
-          draft.setAction(Intent.ACTION_SEND_MULTIPLE);
-          draft.setType("application/octet-stream");
+                 if (hasMultipleFiles) {
+                     ArrayList<CharSequence> texts = new ArrayList<>();
+                     if (htmlPattern.matcher(message).matches()) {
+                         Log.d("SocialSharing", "Message is HTML (multiple files)");
+                         texts.add(Html.fromHtml(message));
+                         draft.putCharSequenceArrayListExtra(Intent.EXTRA_TEXT, texts);
+                         draft.setType("text/html");
+                     } else {
+                         Log.d("SocialSharing", "Message is plain text (multiple files)");
+                         texts.add(message);
+                         draft.putCharSequenceArrayListExtra(Intent.EXTRA_TEXT, texts);
+                         draft.setType("text/plain");
+                     }
+                     Log.d("SocialSharing", "Added EXTRA_TEXT as ArrayList, size=" + texts.size());
+                 } else {
+                     if (htmlPattern.matcher(message).matches()) {
+                         Log.d("SocialSharing", "Message is HTML (single/no file)");
+                         draft.putExtra(Intent.EXTRA_TEXT, Html.fromHtml(message));
+                         draft.setType("text/html");
+                     } else {
+                         Log.d("SocialSharing", "Message is plain text (single/no file)");
+                         draft.putExtra(Intent.EXTRA_TEXT, message);
+                         draft.setType("text/plain");
+                     }
+                     Log.d("SocialSharing", "Added EXTRA_TEXT as String/CharSequence");
+                 }
+             }
 
-          draft.setComponent(new ComponentName(info.activityInfo.packageName, info.activityInfo.name));
-          labeledIntentList.add(new LabeledIntent(draft, info.activityInfo.packageName, info.loadLabel(cordova.getActivity().getPackageManager()), info.icon));
-        }
-        final Intent emailAppLists = Intent.createChooser(labeledIntentList.remove(labeledIntentList.size() - 1), "Choose Email App");
-        emailAppLists.putExtra(Intent.EXTRA_INITIAL_INTENTS, labeledIntentList.toArray(new LabeledIntent[labeledIntentList.size()]));
+             if (notEmpty(subject)) {
+                 Log.d("SocialSharing", "Subject added: " + subject);
+                 draft.putExtra(Intent.EXTRA_SUBJECT, subject);
+             }
 
-        // as an experiment for #300 we're explicitly running it on the ui thread here
-        cordova.getActivity().runOnUiThread(new Runnable() {
-          public void run() {
-            cordova.startActivityForResult(plugin, emailAppLists, ACTIVITY_CODE_SENDVIAEMAIL);
-          }
-        });
-      }
-    });
+             try {
+                 if (to != null && to.length() > 0) {
+                     Log.d("SocialSharing", "Adding TO addresses, count=" + to.length());
+                     draft.putExtra(Intent.EXTRA_EMAIL, toStringArray(to));
+                 }
+                 if (cc != null && cc.length() > 0) {
+                     Log.d("SocialSharing", "Adding CC addresses, count=" + cc.length());
+                     draft.putExtra(Intent.EXTRA_CC, toStringArray(cc));
+                 }
+                 if (bcc != null && bcc.length() > 0) {
+                     Log.d("SocialSharing", "Adding BCC addresses, count=" + bcc.length());
+                     draft.putExtra(Intent.EXTRA_BCC, toStringArray(bcc));
+                 }
 
-    return true;
-  }
+                 if (hasAttachments) {
+                     Log.d("SocialSharing", "Processing attached files, count=" + files.length());
+                     final String dir = getDownloadDir();
+                     Log.d("SocialSharing", "Download dir = " + dir);
+                     if (dir != null) {
+                         ArrayList<Uri> fileUris = new ArrayList<>();
+                         for (int i = 0; i < files.length(); i++) {
+                             Log.d("SocialSharing", "Processing file index " + i + " : " + files.getString(i));
+                             Uri fileUri = getFileUriAndSetType(draft, dir, files.getString(i), subject, i);
+                             Log.d("SocialSharing", "Got fileUri: " + fileUri);
+                             fileUri = FileProvider.getUriForFile(
+                                     webView.getContext(),
+                                     cordova.getActivity().getPackageName() + ".sharing.provider",
+                                     new File(fileUri.getPath())
+                             );
+                             Log.d("SocialSharing", "FileProvider URI: " + fileUri);
+                             if (fileUri != null) {
+                                 fileUris.add(fileUri);
+                             }
+                         }
+                         if (!fileUris.isEmpty()) {
+                             Log.d("SocialSharing", "Adding " + fileUris.size() + " file URIs");
+                             draft.putParcelableArrayListExtra(Intent.EXTRA_STREAM, fileUris);
+                         }
+                     }
+                 }
+             } catch (Exception e) {
+                 Log.e("SocialSharing", "Exception during extras: " + Log.getStackTraceString(e));
+                 callbackContext.error(e.getMessage());
+                 return;
+             }
+
+             draft.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+             Log.d("SocialSharing", "FLAG_ACTIVITY_NEW_TASK added");
+
+             // set action
+             if (hasMultipleFiles) {
+                 draft.setAction(Intent.ACTION_SEND_MULTIPLE);
+                 Log.d("SocialSharing", "Set action: ACTION_SEND_MULTIPLE");
+             } else if (hasAttachments) {
+                 draft.setAction(Intent.ACTION_SEND);
+                 Log.d("SocialSharing", "Set action: ACTION_SEND");
+             } else {
+                 draft.setAction(Intent.ACTION_SENDTO);
+                 draft.setData(Uri.parse("mailto:"));
+                 Log.d("SocialSharing", "Set action: ACTION_SENDTO with mailto:");
+             }
+
+             // query email apps
+             List<ResolveInfo> emailAppList = cordova.getActivity().getPackageManager().queryIntentActivities(draft, 0);
+             Log.d("SocialSharing", "Found email apps: " + emailAppList.size());
+
+             List<Intent> intentList = new ArrayList<>();
+             for (ResolveInfo info : emailAppList) {
+                 Intent targeted = new Intent(draft);
+                 targeted.setComponent(new ComponentName(info.activityInfo.packageName, info.activityInfo.name));
+                 intentList.add(targeted);
+
+                 Log.d("SocialSharing", "Added Intent for " + info.activityInfo.packageName
+                         + " with action=" + targeted.getAction()
+                         + " extras=" + targeted.getExtras());
+             }
+
+             if (!intentList.isEmpty()) {
+                 Log.d("SocialSharing", "Creating chooser with " + intentList.size() + " intents");
+
+                 Intent baseIntent = intentList.remove(intentList.size() - 1);
+                 Intent[] extraIntents = intentList.toArray(new Intent[0]);
+
+                 final Intent emailAppLists = Intent.createChooser(baseIntent, "Choose Email App");
+                 emailAppLists.putExtra(Intent.EXTRA_INITIAL_INTENTS, extraIntents);
+
+                 // dump extras for debug
+                 Bundle extras = draft.getExtras();
+                 if (extras != null) {
+                     for (String key : extras.keySet()) {
+                         Object value = extras.get(key);
+                         Log.d("SocialSharing", "Final Intent extra: " + key + " = " + value +
+                                 " (" + (value != null ? value.getClass() : "null") + ")");
+                     }
+                 }
+
+                 cordova.getActivity().runOnUiThread(new Runnable() {
+                     public void run() {
+                         Log.d("SocialSharing", "Starting chooser activity");
+                         cordova.startActivityForResult(plugin, emailAppLists, ACTIVITY_CODE_SENDVIAEMAIL);
+                     }
+                 });
+             } else {
+                 Log.e("SocialSharing", "No email apps found");
+                 callbackContext.error("No email apps available");
+             }
+         }
+     });
+
+     return true;
+ }
+
+
+
+
+
 
   private String getDownloadDir() throws IOException {
     // better check, otherwise it may crash the app
