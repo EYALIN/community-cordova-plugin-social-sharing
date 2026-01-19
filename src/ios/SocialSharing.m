@@ -269,8 +269,24 @@ static NSString *const kShareOptionIPadCoordinates = @"iPadCoordinates";
 }
 
 - (bool)isEmailAvailable {
+  // First check if any app can handle mailto: URL (works for third-party email apps)
+  NSURL *mailtoURL = [NSURL URLWithString:@"mailto:test@test.com"];
+  if ([[UIApplication sharedApplication] canOpenURL:mailtoURL]) {
+    return true;
+  }
+  // Fallback to native Mail app check
   Class messageClass = (NSClassFromString(@"MFMailComposeViewController"));
   return messageClass != nil && [messageClass canSendMail];
+}
+
+- (void)hasEmailClients:(CDVInvokedUrlCommand*)command {
+  // Check if any email client can handle mailto: URLs
+  NSURL *mailtoURL = [NSURL URLWithString:@"mailto:test@test.com"];
+  BOOL hasClients = [[UIApplication sharedApplication] canOpenURL:mailtoURL];
+  NSLog(@"SocialSharing: hasEmailClients = %@", hasClients ? @"YES" : @"NO");
+
+  CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:hasClients];
+  [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
 
 - (bool)isAvailableForSharing:(CDVInvokedUrlCommand*)command
@@ -336,19 +352,74 @@ static NSString *const kShareOptionIPadCoordinates = @"iPadCoordinates";
 }
 
 - (void)shareViaEmail:(CDVInvokedUrlCommand*)command {
-  if ([self isEmailAvailable]) {
+  // Check if MFMailComposeViewController class is available
+  Class messageClass = (NSClassFromString(@"MFMailComposeViewController"));
+  if (messageClass == nil) {
+    CDVPluginResult * pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"not available"];
+    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+    return;
+  }
 
-    if (TARGET_IPHONE_SIMULATOR && IsAtLeastiOSVersion(@"8.0")) {
-      UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"SocialSharing plugin"
-                                                      message:@"Sharing via email is not supported on the iOS 8 simulator."
-                                                     delegate:nil
-                                            cancelButtonTitle:@"OK"
-                                            otherButtonTitles:nil];
-      [alert show];
-      return;
+  // Try to open mail composer even if canSendMail returns false
+  // On newer iOS, canSendMail may return false even when third-party mail apps are available
+  BOOL canSendMail = [MFMailComposeViewController canSendMail];
+  NSLog(@"SocialSharing: canSendMail = %@", canSendMail ? @"YES" : @"NO");
+
+  if (!canSendMail) {
+    // Try using mailto: URL scheme as fallback
+    NSString *message = [command.arguments objectAtIndex:0];
+    NSString *subject = [command.arguments objectAtIndex:1];
+    NSArray *toRecipients = [command.arguments objectAtIndex:2];
+
+    NSMutableString *mailtoURL = [NSMutableString stringWithString:@"mailto:"];
+
+    if (toRecipients != (id)[NSNull null] && [toRecipients count] > 0) {
+      [mailtoURL appendString:[toRecipients componentsJoinedByString:@","]];
     }
 
-    [self cycleTheGlobalMailComposer];
+    NSMutableArray *params = [[NSMutableArray alloc] init];
+
+    if (subject != (id)[NSNull null] && [subject length] > 0) {
+      [params addObject:[NSString stringWithFormat:@"subject=%@", [subject stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]]]];
+    }
+
+    if (message != (id)[NSNull null] && [message length] > 0) {
+      [params addObject:[NSString stringWithFormat:@"body=%@", [message stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]]]];
+    }
+
+    if ([params count] > 0) {
+      [mailtoURL appendString:@"?"];
+      [mailtoURL appendString:[params componentsJoinedByString:@"&"]];
+    }
+
+    NSURL *url = [NSURL URLWithString:mailtoURL];
+    NSLog(@"SocialSharing: Trying mailto URL: %@", mailtoURL);
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:^(BOOL success) {
+        if (success) {
+          CDVPluginResult * pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:YES];
+          [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        } else {
+          CDVPluginResult * pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"No email app available"];
+          [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        }
+      }];
+    });
+    return;
+  }
+
+  if (TARGET_IPHONE_SIMULATOR && IsAtLeastiOSVersion(@"8.0")) {
+    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"SocialSharing plugin"
+                                                    message:@"Sharing via email is not supported on the iOS 8 simulator."
+                                                   delegate:nil
+                                          cancelButtonTitle:@"OK"
+                                          otherButtonTitles:nil];
+    [alert show];
+    return;
+  }
+
+  [self cycleTheGlobalMailComposer];
 
     self.globalMailComposer.mailComposeDelegate = self;
 
@@ -427,10 +498,6 @@ static NSString *const kShareOptionIPadCoordinates = @"iPadCoordinates";
     dispatch_async(dispatch_get_main_queue(), ^{
       [[self getTopMostViewController] presentViewController:self.globalMailComposer animated:YES completion:nil];
     });
-  } else {
-    CDVPluginResult * pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"not available"];
-    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
-  }
 }
 
 - (UIViewController*) getTopMostViewController {

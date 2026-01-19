@@ -107,6 +107,10 @@ SocialSharing.prototype.canShareViaEmail = function (successCallback, errorCallb
   cordova.exec(successCallback, this._getErrorCallback(errorCallback, "canShareViaEmail"), "SocialSharing", "canShareViaEmail", []);
 };
 
+SocialSharing.prototype.hasEmailClients = function (successCallback, errorCallback) {
+  cordova.exec(successCallback, this._getErrorCallback(errorCallback, "hasEmailClients"), "SocialSharing", "hasEmailClients", []);
+};
+
 SocialSharing.prototype.shareViaInstagram = function (message, fileOrFileArray, successCallback, errorCallback) {
   cordova.exec(successCallback, this._getErrorCallback(errorCallback, "shareViaInstagram"), "SocialSharing", "shareViaInstagram", [message, null, this._asArray(fileOrFileArray), null]);
 };
@@ -138,20 +142,6 @@ SocialSharing.prototype._getErrorCallback = function (ecb, functionName) {
   }
 };
 
-SocialSharing.install = function () {
-  if (!window.plugins) {
-    window.plugins = {};
-  }
+var SocialSharingPlugin = new SocialSharing();
 
-  window.plugins.socialsharing = new SocialSharing();
-
-  // Note only polyfill navigator.share if it is not defined, since shareW3C implements L1 of the spec,
-  // and an existing navigator.share method could implement L2.
-  if (!navigator.share) {
-    navigator.share = window.plugins.socialsharing.shareW3C;
-  }
-
-  return window.plugins.socialsharing;
-};
-
-cordova.addConstructor(SocialSharing.install);
+module.exports = SocialSharingPlugin;

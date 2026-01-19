@@ -48,6 +48,7 @@ public class SocialSharing extends CordovaPlugin {
   private static final String ACTION_SHARE_WITH_OPTIONS_EVENT = "shareWithOptions";
   private static final String ACTION_CAN_SHARE_VIA = "canShareVia";
   private static final String ACTION_CAN_SHARE_VIA_EMAIL = "canShareViaEmail";
+  private static final String ACTION_HAS_EMAIL_CLIENTS = "hasEmailClients";
   private static final String ACTION_SHARE_VIA = "shareVia";
   private static final String ACTION_SHARE_VIA_TWITTER_EVENT = "shareViaTwitter";
   private static final String ACTION_SHARE_VIA_FACEBOOK_EVENT = "shareViaFacebook";
@@ -115,6 +116,10 @@ public class SocialSharing extends CordovaPlugin {
         callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "not available"));
         return false;
       }
+    } else if (ACTION_HAS_EMAIL_CLIENTS.equals(action)) {
+      boolean hasClients = isEmailAvailable();
+      callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, hasClients));
+      return true;
     } else if (ACTION_SHARE_VIA.equals(action)) {
       return doSendIntent(callbackContext, args.getString(0), args.getString(1), args.getJSONArray(2), args.getString(3), args.getString(4), null, false, true);
     } else if (ACTION_SHARE_VIA_SMS_EVENT.equals(action)) {
