@@ -14,6 +14,7 @@
 - (void)shareWithOptions:(CDVInvokedUrlCommand*)command;
 - (void)canShareVia:(CDVInvokedUrlCommand*)command;
 - (void)canShareViaEmail:(CDVInvokedUrlCommand*)command;
+- (void)hasEmailClients:(CDVInvokedUrlCommand*)command;
 - (void)shareVia:(CDVInvokedUrlCommand*)command;
 - (void)shareViaTwitter:(CDVInvokedUrlCommand*)command;
 - (void)shareViaFacebook:(CDVInvokedUrlCommand*)command;

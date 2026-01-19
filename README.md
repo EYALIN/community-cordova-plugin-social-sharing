@@ -21,6 +21,14 @@ or if you're asking for new features or priority bug fixes. Thank you!
 
 > Version 6.0.0 is compatible with Android X. See [this issue](https://github.com/EddyVerbruggen/SocialSharing-PhoneGap-Plugin/pull/1039) for details. 5.6.8 is the last version before 6.0.0, so be sure to pick that if you run into Android X-related issues.
 
+### Changelog (Recent)
+
+#### 6.3.0
+- Added `hasEmailClients()` method to check if any email client is available (iOS & Android)
+- iOS: Improved email availability detection using mailto: URL scheme (works with third-party email apps like Gmail, Outlook when native Mail is not configured)
+- Changed global variable export to `SocialSharingPlugin` for consistency with other Cordova plugins
+- TypeScript types updated
+
 ## 0. Index
 
 1. [Description](#1-description)
@@ -292,6 +300,25 @@ Note that on Android, SMS via Hangouts may not behave correctly
 
 #### Email
 Code inspired by the [EmailComposer plugin](https://github.com/katzer/cordova-plugin-email-composer), note that this is not supported on the iOS 8 simulator (an alert will be shown if your try to).
+
+##### Check if email clients are available
+Use `hasEmailClients` to check if any email client is installed. On iOS, this checks for mailto: URL scheme support, which works with third-party email apps (Gmail, Outlook, etc.) even when the native Mail app is not configured.
+```js
+SocialSharingPlugin.hasEmailClients(
+  function(hasClients) {
+    if (hasClients) {
+      console.log('Email clients available');
+    } else {
+      console.log('No email clients found');
+    }
+  },
+  function(error) {
+    console.log('Error: ' + error);
+  }
+);
+```
+
+##### Send email
 ```js
 window.plugins.socialsharing.shareViaEmail(
   'Message', // can contain HTML tags, but support on Android is rather limited:  http://stackoverflow.com/questions/15136480/how-to-send-html-content-with-image-through-android-default-email-client

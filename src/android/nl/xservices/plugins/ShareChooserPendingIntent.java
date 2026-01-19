@@ -10,7 +10,10 @@ public class ShareChooserPendingIntent extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         if (intent.getExtras() != null) {
-            ShareChooserPendingIntent.chosenComponent = intent.getExtras().get(Intent.EXTRA_CHOSEN_COMPONENT).toString();
+            Object chosenComponent = intent.getExtras().get(Intent.EXTRA_CHOSEN_COMPONENT);
+            if (chosenComponent != null) {
+                ShareChooserPendingIntent.chosenComponent = chosenComponent.toString();
+            }
         }
     }
 }

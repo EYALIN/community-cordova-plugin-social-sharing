@@ -1,6 +1,6 @@
 {
   "name": "community-cordova-plugin-social-sharing",
-  "version": "6.2.2",
+  "version": "6.3.0",
   "description": "Share text, images (and other files), or a link via the native sharing widget of your device. Android is fully supported, as well as iOS 6 and up. WP8 has somewhat limited support.",
   "cordova": {
     "id": "community-cordova-plugin-social-sharing",

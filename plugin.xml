@@ -2,7 +2,7 @@
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
         xmlns:android="http://schemas.android.com/apk/res/android"
         id="community-cordova-plugin-social-sharing"
-        version="6.2.2">
+        version="6.3.0">
 
   <name>SocialSharing</name>
 
@@ -28,7 +28,7 @@
   <dependency id="es6-promise-plugin" version="^4.1.0" />
 
   <js-module src="www/SocialSharing.js" name="SocialSharing">
-    <clobbers target="window.plugins.socialsharing" />
+    <clobbers target="SocialSharingPlugin" />
   </js-module>
 
   <!-- ios -->
