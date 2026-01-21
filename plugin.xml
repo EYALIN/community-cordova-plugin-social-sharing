@@ -1,8 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="6.3.2" encoding="UTF-8"?>
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
         xmlns:android="http://schemas.android.com/apk/res/android"
         id="community-cordova-plugin-social-sharing"
-        version="6.3.0">
+        version="6.3.2">
 
   <name>SocialSharing</name>
 
@@ -42,12 +42,12 @@
     </config-file>
 
     <preference name="PHOTO_LIBRARY_ADD_USAGE_DESCRIPTION" default="This app requires photo library access to function properly." />
-    <config-file target="*-Info.plist" parent="NSPhotoLibraryAddUsageDescription">
+    <config-file target="App/App-Info.plist" parent="NSPhotoLibraryAddUsageDescription">
       <string>$PHOTO_LIBRARY_ADD_USAGE_DESCRIPTION</string>
     </config-file>
 
     <preference name="PHOTO_LIBRARY_USAGE_DESCRIPTION" default="This app requires photo library access to function properly." />
-    <config-file target ="*-Info.plist" parent="NSPhotoLibraryUsageDescription">
+    <config-file target ="App/App-Info.plist" parent="NSPhotoLibraryUsageDescription">
       <string>$PHOTO_LIBRARY_USAGE_DESCRIPTION</string>
     </config-file>
 
@@ -80,7 +80,7 @@
     </config-file>
 
     <config-file target="AndroidManifest.xml" parent="/*">
-      <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+      <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>
     </config-file>
 
     <config-file target="AndroidManifest.xml" parent="/manifest/application">
