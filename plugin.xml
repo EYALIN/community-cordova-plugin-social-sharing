@@ -92,6 +92,23 @@
      <config-file target="AndroidManifest.xml" parent="/*">
       <queries>
         <package android:name="com.whatsapp" />
+        <package android:name="com.google.android.gm" />
+        <intent>
+          <action android:name="android.intent.action.SENDTO" />
+          <data android:scheme="mailto" />
+        </intent>
+        <intent>
+          <action android:name="android.intent.action.SEND" />
+          <data android:mimeType="message/rfc822" />
+        </intent>
+        <intent>
+          <action android:name="android.intent.action.SEND" />
+          <data android:mimeType="text/plain" />
+        </intent>
+        <intent>
+          <action android:name="android.intent.action.SEND_MULTIPLE" />
+          <data android:mimeType="*/*" />
+        </intent>
       </queries>
     </config-file>
 

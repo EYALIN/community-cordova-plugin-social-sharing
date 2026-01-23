@@ -133,8 +133,38 @@ public class SocialSharing extends CordovaPlugin {
   }
 
   private boolean isEmailAvailable() {
-    final Intent intent = new Intent(Intent.ACTION_SENDTO, Uri.fromParts("mailto", "someone@domain.com", null));
-    return cordova.getActivity().getPackageManager().queryIntentActivities(intent, 0).size() > 0;
+    // Try multiple approaches to detect email clients
+    PackageManager pm = cordova.getActivity().getPackageManager();
+
+    // Approach 1: ACTION_SENDTO with mailto (traditional)
+    Intent sendToIntent = new Intent(Intent.ACTION_SENDTO, Uri.fromParts("mailto", "someone@domain.com", null));
+    if (pm.queryIntentActivities(sendToIntent, 0).size() > 0) {
+      return true;
+    }
+
+    // Approach 2: ACTION_SENDTO with just mailto: scheme
+    Intent mailtoIntent = new Intent(Intent.ACTION_SENDTO);
+    mailtoIntent.setData(Uri.parse("mailto:"));
+    if (pm.queryIntentActivities(mailtoIntent, 0).size() > 0) {
+      return true;
+    }
+
+    // Approach 3: ACTION_SEND with message/rfc822 (email MIME type)
+    Intent sendIntent = new Intent(Intent.ACTION_SEND);
+    sendIntent.setType("message/rfc822");
+    if (pm.queryIntentActivities(sendIntent, 0).size() > 0) {
+      return true;
+    }
+
+    // Approach 4: Check for Gmail specifically (common case)
+    Intent gmailIntent = new Intent(Intent.ACTION_SEND);
+    gmailIntent.setType("text/plain");
+    gmailIntent.setPackage("com.google.android.gm");
+    if (pm.queryIntentActivities(gmailIntent, 0).size() > 0) {
+      return true;
+    }
+
+    return false;
   }
 
  private boolean invokeEmailIntent(final CallbackContext callbackContext,
