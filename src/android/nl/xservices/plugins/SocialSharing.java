@@ -18,6 +18,8 @@ import android.util.Base64;
 import android.view.Gravity;
 import android.widget.Toast;
 import android.util.Log;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaInterface;
@@ -57,6 +59,7 @@ public class SocialSharing extends CordovaPlugin {
   private static final String ACTION_SHARE_VIA_INSTAGRAM_EVENT = "shareViaInstagram";
   private static final String ACTION_SHARE_VIA_SMS_EVENT = "shareViaSMS";
   private static final String ACTION_SHARE_VIA_EMAIL_EVENT = "shareViaEmail";
+  private static final String ACTION_SAVE_TO_PHOTO_ALBUM = "saveToPhotoAlbum";
 
   private static final int ACTIVITY_CODE_SEND__BOOLRESULT = 1;
   private static final int ACTIVITY_CODE_SEND__OBJECT = 2;
@@ -126,6 +129,8 @@ public class SocialSharing extends CordovaPlugin {
       return invokeSMSIntent(callbackContext, args.getJSONObject(0), args.getString(1));
     } else if (ACTION_SHARE_VIA_EMAIL_EVENT.equals(action)) {
       return invokeEmailIntent(callbackContext, args.getString(0), args.getString(1), args.getJSONArray(2), args.isNull(3) ? null : args.getJSONArray(3), args.isNull(4) ? null : args.getJSONArray(4), args.isNull(5) ? null : args.getJSONArray(5));
+    } else if (ACTION_SAVE_TO_PHOTO_ALBUM.equals(action)) {
+      return saveToPhotoAlbum(callbackContext, args.getJSONArray(0));
     } else {
       callbackContext.error("socialSharing." + action + " is not a supported function. Did you mean '" + ACTION_SHARE_EVENT + "'?");
       return false;
@@ -344,6 +349,113 @@ public class SocialSharing extends CordovaPlugin {
 
 
 
+
+  private boolean saveToPhotoAlbum(final CallbackContext callbackContext, final JSONArray files) {
+    cordova.getThreadPool().execute(new SocialSharingRunnable(callbackContext) {
+      public void run() {
+        try {
+          if (files == null || files.length() == 0) {
+            callbackContext.error("No files provided");
+            return;
+          }
+
+          ContentResolver resolver = cordova.getActivity().getContentResolver();
+
+          for (int i = 0; i < files.length(); i++) {
+            String file = files.getString(i);
+            if (file == null || file.isEmpty()) {
+              continue;
+            }
+
+            byte[] imageData = null;
+            String mimeType = "image/png";
+            String extension = "png";
+
+            if (file.startsWith("data:")) {
+              // Handle base64 data URI
+              if (!file.contains(";base64,")) {
+                callbackContext.error("Invalid base64 data");
+                return;
+              }
+              String encodedImg = file.substring(file.indexOf(";base64,") + 8);
+              imageData = Base64.decode(encodedImg, Base64.DEFAULT);
+
+              // Extract mime type from data URI
+              if (file.contains("data:image/")) {
+                mimeType = file.substring(file.indexOf("data:") + 5, file.indexOf(";base64"));
+                extension = mimeType.substring(mimeType.indexOf("/") + 1);
+              }
+            } else if (file.startsWith("file://")) {
+              // Handle file URI
+              String filePath = file.replace("file://", "");
+              File srcFile = new File(filePath);
+              if (!srcFile.exists()) {
+                callbackContext.error("File not found: " + filePath);
+                return;
+              }
+              FileInputStream fis = new FileInputStream(srcFile);
+              imageData = getBytes(fis);
+              fis.close();
+
+              // Get extension from filename
+              int dotIndex = filePath.lastIndexOf(".");
+              if (dotIndex != -1) {
+                extension = filePath.substring(dotIndex + 1).toLowerCase();
+                mimeType = getMIMEType(filePath);
+              }
+            } else {
+              callbackContext.error("Unsupported file format: " + file);
+              return;
+            }
+
+            if (imageData == null) {
+              callbackContext.error("Failed to read image data");
+              return;
+            }
+
+            // Save to MediaStore
+            String fileName = "IMG_" + System.currentTimeMillis() + "_" + i + "." + extension;
+
+            ContentValues values = new ContentValues();
+            values.put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, fileName);
+            values.put(android.provider.MediaStore.Images.Media.MIME_TYPE, mimeType);
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+              values.put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES);
+              values.put(android.provider.MediaStore.Images.Media.IS_PENDING, 1);
+            }
+
+            Uri uri = resolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+
+            if (uri == null) {
+              callbackContext.error("Failed to create MediaStore entry");
+              return;
+            }
+
+            OutputStream outputStream = resolver.openOutputStream(uri);
+            if (outputStream == null) {
+              callbackContext.error("Failed to open output stream");
+              return;
+            }
+
+            outputStream.write(imageData);
+            outputStream.close();
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+              values.clear();
+              values.put(android.provider.MediaStore.Images.Media.IS_PENDING, 0);
+              resolver.update(uri, values, null, null);
+            }
+          }
+
+          callbackContext.success();
+        } catch (Exception e) {
+          callbackContext.error("Error saving to photo album: " + e.getMessage());
+        }
+      }
+    });
+    return true;
+  }
 
   private String getDownloadDir() throws IOException {
     // better check, otherwise it may crash the app
