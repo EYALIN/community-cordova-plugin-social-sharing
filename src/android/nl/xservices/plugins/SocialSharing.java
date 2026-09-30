@@ -269,8 +269,24 @@ public class SocialSharing extends CordovaPlugin {
                          }
                          if (!fileUris.isEmpty()) {
                              Log.d("SocialSharing", "Adding " + fileUris.size() + " file URIs");
-                             draft.putParcelableArrayListExtra(Intent.EXTRA_STREAM, fileUris);
+                             if (fileUris.size() > 1) {
+                                 draft.putParcelableArrayListExtra(Intent.EXTRA_STREAM, fileUris);
+                             } else {
+                                 draft.putExtra(Intent.EXTRA_STREAM, fileUris.get(0));
+                             }
+                             draft.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                             ClipData clipData = ClipData.newUri(webView.getContext().getContentResolver(), "attachment", fileUris.get(0));
+                             for (int i = 1; i < fileUris.size(); i++) {
+                                 clipData.addItem(new ClipData.Item(fileUris.get(i)));
+                             }
+                             draft.setClipData(clipData);
+                         } else {
+                             // no attachment could actually be produced: fall back to a plain email MIME type
+                             draft.setType("message/rfc822");
                          }
+                     } else {
+                         // couldn't resolve a download dir to stage the attachment(s) in: fall back to a plain email MIME type
+                         draft.setType("message/rfc822");
                      }
                  }
              } catch (Exception e) {
@@ -295,17 +311,33 @@ public class SocialSharing extends CordovaPlugin {
                  Log.d("SocialSharing", "Set action: ACTION_SENDTO with mailto:");
              }
 
-             // query email apps
-             List<ResolveInfo> emailAppList = cordova.getActivity().getPackageManager().queryIntentActivities(draft, 0);
+             // Resolve email-capable packages via a SENDTO/mailto probe (not by querying the
+             // draft's own ACTION_SEND/ACTION_SEND_MULTIPLE intent, which any share target -
+             // Chrome, Bluetooth, Messaging, etc. - can also answer). Then build the real
+             // SEND/SEND_MULTIPLE/SENDTO intent scoped to each resolved package, so the
+             // chooser only ever lists email apps.
+             PackageManager pm = cordova.getActivity().getPackageManager();
+             Intent emailProbe = new Intent(Intent.ACTION_SENDTO);
+             emailProbe.setData(Uri.parse("mailto:"));
+             List<ResolveInfo> emailAppList = pm.queryIntentActivities(emailProbe, 0);
              Log.d("SocialSharing", "Found email apps: " + emailAppList.size());
 
              List<Intent> intentList = new ArrayList<>();
              for (ResolveInfo info : emailAppList) {
+                 String pkg = info.activityInfo.packageName;
                  Intent targeted = new Intent(draft);
-                 targeted.setComponent(new ComponentName(info.activityInfo.packageName, info.activityInfo.name));
+                 targeted.setPackage(pkg);
+
+                 // Confirm this email package actually has a handler for the real draft action
+                 // (ACTION_SEND / ACTION_SEND_MULTIPLE / ACTION_SENDTO), not just for mailto:.
+                 if (pm.resolveActivity(targeted, 0) == null) {
+                     Log.d("SocialSharing", "Skipping " + pkg + " - no handler for action=" + draft.getAction());
+                     continue;
+                 }
+
                  intentList.add(targeted);
 
-                 Log.d("SocialSharing", "Added Intent for " + info.activityInfo.packageName
+                 Log.d("SocialSharing", "Added Intent for " + pkg
                          + " with action=" + targeted.getAction()
                          + " extras=" + targeted.getExtras());
              }
